@@ -99,7 +99,6 @@ int main(int argc, char **argv)
 	for (auto &sumaTh : SumasParciales)
 	{
 		std::cout << "Suma de Parciales: " << sumaTh << std::endl;
-		std::cout << "Arreglo en i: " << sumaTh << std::endl;
 		sumaThreads += sumaTh;
 	}
 
