@@ -3,7 +3,6 @@
 
 int main(int argc, char **argv)
 {
-	std::mutex Candado;
 
 	uint64_t totalElementos;
 	uint32_t numThreads;
@@ -35,48 +34,51 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 	//Posible Solucion: Agregar la condicional dentro del proceso de suma, para luego ajustar los rangos de corte y pasar un elemento a cada hilo, arreglar mas adelante
-	//Analizar, creo que lo tome bien, paso innecesario
 	for (size_t i = 0; i < totalElementos; i++)
 	{
-		Candado.lock();
 		ArrElementos.push_back(nRandom(rng));
 		SumasParciales.push_back(0);
-		Candado.unlock();
 	}
 
 	//======SERIAL======
+	auto start = std::chrono::high_resolution_clock::now();
 	for (auto &num : ArrElementos)
 	{
-		Candado.lock();
 		sumaSerial += num;
-		Candado.unlock();
 	}
-
+	auto end = std::chrono::high_resolution_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	auto TiempoSumaSerial = elapsed.count();
+	//Posiblemente aca !!!
+	start = std::chrono::high_resolution_clock::now();
 	auto sumaParcial = [](std::vector<uint32_t> &ArrElementos, std::vector<uint32_t> &SumasParciales, size_t posArr, size_t Left, size_t Right) {
 		for (size_t i = Left; i < Right; ++i)
 		{
 			SumasParciales[posArr] += ArrElementos[i];
 		}
 	};
-
+	end = std::chrono::high_resolution_clock::now();
+	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	auto Tiempo1SumaParalelo = elapsed.count();
+	//======Threads======
 	for (size_t i = 0; i < numThreads; ++i)
 	{
-		Candado.lock();
 		threads.push_back(new std::thread(sumaParcial, std::ref(ArrElementos), std::ref(SumasParciales), i, i * (totalElementos) / numThreads, (i + 1) * (totalElementos) / numThreads));
-		Candado.unlock();
 	}
 	for (auto &th : threads)
 	{
 		th->join();
 	}
-	//(2) Reducción (Consolidación de resultados parciales)
+	// Consolidación de resultados parciales
+	start = std::chrono::high_resolution_clock::now();
 	for (auto &sumaTh : SumasParciales)
 	{
-		Candado.lock();
 		sumaThreads += sumaTh;
-		Candado.unlock();
 	}
-
+	end = std::chrono::high_resolution_clock::now();
+	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	auto Tiempo2SumaParalelo = elapsed.count();
+	auto TiempoSumaParalelo = Tiempo1SumaParalelo + Tiempo2SumaParalelo;
 	//======RESULTADOS=====
 	std::cout << "====Serial====" << std::endl;
 	std::cout << "Suma Serial:" << sumaSerial << std::endl;
@@ -84,5 +86,14 @@ int main(int argc, char **argv)
 	std::cout << "====Threads====" << std::endl;
 	std::cout << "sumaHilos: " << sumaThreads << std::endl;
 
+	// std::cout << "====Llenado====" << std::endl;
+	// std::cout << "TiempoLlenado :" << TiempoRelleno << "[ms]" << std::endl;
+	std::cout << "====Suma====" << std::endl;
+	std::cout << "TiempoSumaSerial :" << TiempoSumaSerial << "[ms]" << std::endl;
+	std::cout << "TiempoSumaParalelo:" << TiempoSumaParalelo << "[ms]" << std::endl;
+	std::cout << std::endl;
+
+	std::cout << "====Desempeño====" << std::endl;
+	std::cout << "Tiempo Llenados= " << (double)TiempoSumaSerial / TiempoSumaParalelo << std::endl;
 	return (EXIT_SUCCESS);
 }
