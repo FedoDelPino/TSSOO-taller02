@@ -3,6 +3,7 @@
 
 int main(int argc, char **argv)
 {
+	std::mutex Candado;
 
 	uint64_t totalElementos;
 	uint32_t numThreads;
@@ -37,14 +38,18 @@ int main(int argc, char **argv)
 	//Analizar, creo que lo tome bien, paso innecesario
 	for (size_t i = 0; i < totalElementos; i++)
 	{
+		Candado.lock();
 		ArrElementos.push_back(nRandom(rng));
 		SumasParciales.push_back(0);
+		Candado.unlock();
 	}
 
 	//======SERIAL======
 	for (auto &num : ArrElementos)
 	{
+		Candado.lock();
 		sumaSerial += num;
+		Candado.unlock();
 	}
 
 	auto sumaParcial = [](std::vector<uint32_t> &ArrElementos, std::vector<uint32_t> &SumasParciales, size_t posArr, size_t Left, size_t Right) {
@@ -56,7 +61,9 @@ int main(int argc, char **argv)
 
 	for (size_t i = 0; i < numThreads; ++i)
 	{
+		Candado.lock();
 		threads.push_back(new std::thread(sumaParcial, std::ref(ArrElementos), std::ref(SumasParciales), i, i * (totalElementos) / numThreads, (i + 1) * (totalElementos) / numThreads));
+		Candado.unlock();
 	}
 	for (auto &th : threads)
 	{
@@ -65,7 +72,9 @@ int main(int argc, char **argv)
 	//(2) Reducción (Consolidación de resultados parciales)
 	for (auto &sumaTh : SumasParciales)
 	{
+		Candado.lock();
 		sumaThreads += sumaTh;
+		Candado.unlock();
 	}
 
 	//======RESULTADOS=====
