@@ -1,99 +1,113 @@
 #include <global.h>
 #include <checkArgs.hpp>
 
-int main(int argc, char **argv)
-{
+uint64_t* ArregloComun = nullptr;
+uint64_t* ArregloSerial = nullptr;
+uint64_t* ArregloParalelo = nullptr;
+uint64_t SumaParalelo = 0;
+std::vector<std::thread *> threads;
+std::vector<std::thread *> threadsSumas;
+std::mutex Candado;
 
+void LLenadoArreglo(size_t Left, size_t Right, size_t RandType){
+	for(size_t i = Left; i < Right; ++i){		
+		// Arreglo[i] = unif(rng);
+		switch(RandType){
+			case 0: 
+				ArregloSerial[i] = ArregloComun[i]; 
+//				std::cout << "Elemento del Arreglo Serial: "<< ArregloSerial[i] << std::endl;
+				break;
+			case 1:
+				ArregloParalelo[i] = ArregloComun[i];
+//				std::cout << "Elemento del Arreglo: Paralelo"<< ArregloParalelo[i] << std::endl;
+				break;
+		}
+	}
+}
+void SumadoParalelo(uint32_t Left, uint32_t Right){
+	Candado.lock();
+	for(uint32_t i = Left; i < Right; i++){
+		SumaParalelo += ArregloParalelo[i];
+	}
+	Candado.unlock();
+	//std::cout << "Suma En Paralelo: "<< SumaParalelo << std::endl;
+}
+
+int main(int argc, char** argv){
+	
 	uint64_t totalElementos;
 	uint32_t numThreads;
-	int lInf;
-	int LSup;
-
-	uint32_t sumaSerial = 0;
-	uint32_t sumaThreads = 0;
-	std::vector<std::thread *> threads;
-	std::vector<uint32_t> ArrElementos;
-	std::vector<uint32_t> SumasParciales;
-
-	//Entrada de Argumentos
-	auto argumentos = (std::shared_ptr<checkArgs>)new checkArgs(argc, argv);
-
-	totalElementos = argumentos->getArgs().tamProblema;
-	numThreads = argumentos->getArgs().numThreads;
-	lInf = argumentos->getArgs().lInf;
-	LSup = argumentos->getArgs().LSup;
-
-	//Generador de Numeros Aleatorios en cuanto a los Limites
-	static thread_local std::random_device device;
-	static thread_local std::mt19937 rng(device());
-	std::uniform_int_distribution<uint32_t> nRandom(lInf, LSup);
-
-	if (totalElementos < numThreads)
-	{
-		std::cout << "Por favor, corroborar que el tamaño del arreglo sea igual o mayor que los Hilos creados para realizar la correcta suma" << std::endl;
-		exit(EXIT_FAILURE);
-	}
-	//Posible Solucion: Agregar la condicional dentro del proceso de suma, para luego ajustar los rangos de corte y pasar un elemento a cada hilo, arreglar mas adelante
-	for (size_t i = 0; i < totalElementos; i++)
-	{
-		ArrElementos.push_back(nRandom(rng));
-		SumasParciales.push_back(0);
+	uint32_t LInferior;
+	uint32_t LSuperior;
+	
+	auto argumentos = (std::shared_ptr<checkArgs>) new checkArgs(argc, argv);
+	
+	totalElementos = argumentos->getArgs().TamProblema;
+	numThreads     = argumentos->getArgs().numThreads;
+	LInferior	   = argumentos->getArgs().LInferior;
+	LSuperior 	   = argumentos->getArgs().LSuperior;	
+	std::cout << "Elementos: " << totalElementos << std::endl;
+	std::cout << "Threads  : " << numThreads     << std::endl;
+	std::cout << "Limite Inferior Rand: "<< LInferior << std::endl;
+	std::cout << "Limite Superior Rand: "<< LSuperior << std::endl;
+	
+	//================Modulo LLenado================
+	ArregloComun = new uint64_t[totalElementos];
+	std::srand(std::time(0)); 
+	std::random_device device;
+	std::mt19937 rng(device());
+	std::uniform_int_distribution<> unif(LInferior, LSuperior);
+	for(uint32_t i = 0; i < totalElementos; i++){
+		ArregloComun[i] = unif(rng);
+		// std::cout << "Arreglo comun" << ArregloComun[i] << std::endl;
 	}
 
-	//======SERIAL======
+	//======Llenado En Serie======
+	ArregloSerial = new uint64_t[totalElementos];
 	auto start = std::chrono::high_resolution_clock::now();
-	for (auto &num : ArrElementos)
-	{
-		sumaSerial += num;
-	}
-	auto end = std::chrono::high_resolution_clock::now();
+	LLenadoArreglo(0,totalElementos,0);
+	auto end     = std::chrono::high_resolution_clock::now(); 
 	auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-	auto TiempoSumaSerial = elapsed.count();
-	//Posiblemente aca !!!
+	auto totalTimeS = elapsed.count();
+
+	//======Llenado En Paralelo======
+	ArregloParalelo = new uint64_t[totalElementos];
 	start = std::chrono::high_resolution_clock::now();
-	auto sumaParcial = [](std::vector<uint32_t> &ArrElementos, std::vector<uint32_t> &SumasParciales, size_t posArr, size_t Left, size_t Right) {
-		for (size_t i = Left; i < Right; ++i)
-		{
-			SumasParciales[posArr] += ArrElementos[i];
-		}
-	};
-	end = std::chrono::high_resolution_clock::now();
+	for (size_t i= 0; i < numThreads ; i++){
+		threads.push_back(new std::thread(LLenadoArreglo, i*(totalElementos)/numThreads, (i+1)*(totalElementos)/numThreads,1));
+	}
+	for(auto &thLlenado : threads){
+		thLlenado->join();
+	}
+	end     = std::chrono::high_resolution_clock::now(); 
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-	auto Tiempo1SumaParalelo = elapsed.count();
-	//======Threads======
-	for (size_t i = 0; i < numThreads; ++i)
-	{
-		threads.push_back(new std::thread(sumaParcial, std::ref(ArrElementos), std::ref(SumasParciales), i, i * (totalElementos) / numThreads, (i + 1) * (totalElementos) / numThreads));
-	}
-	for (auto &th : threads)
-	{
-		th->join();
-	}
-	// Consolidación de resultados parciales
-	start = std::chrono::high_resolution_clock::now();
-	for (auto &sumaTh : SumasParciales)
-	{
-		sumaThreads += sumaTh;
-	}
-	end = std::chrono::high_resolution_clock::now();
-	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-	auto Tiempo2SumaParalelo = elapsed.count();
-	auto TiempoSumaParalelo = Tiempo1SumaParalelo + Tiempo2SumaParalelo;
-	//======RESULTADOS=====
-	std::cout << "====Serial====" << std::endl;
-	std::cout << "Suma Serial:" << sumaSerial << std::endl;
+	auto totalTimeP = elapsed.count();
+	
+	//================Modulo Sumado================
 
-	std::cout << "====Threads====" << std::endl;
-	std::cout << "sumaHilos: " << sumaThreads << std::endl;
+	//======Sumado En Serie======
+	uint64_t SumaSerial=0;
+	for (size_t i=0;i<totalElementos;i++){
+		SumaSerial += ArregloSerial[i];
+	}
+	std::cout <<"Suma En Serie: " <<SumaSerial << std::endl;	
+	//======Sumado En Paralelo======
+	//SumaParalelo = new uint64_t[totalElementos];
+	for (size_t i=0;i<numThreads;i++){
+		threadsSumas.push_back(new std::thread(SumadoParalelo, i*(totalElementos)/numThreads,(i+1)*(totalElementos)/numThreads));
+	}
+	for(auto &thS : threadsSumas){
+		thS->join();
+	}
+	std::cout << "Suma Total en Paralelo: " << SumaParalelo << std::endl;
 
-	// std::cout << "====Llenado====" << std::endl;
-	// std::cout << "TiempoLlenado :" << TiempoRelleno << "[ms]" << std::endl;
-	std::cout << "====Suma====" << std::endl;
-	std::cout << "TiempoSumaSerial :" << TiempoSumaSerial << "[ms]" << std::endl;
-	std::cout << "TiempoSumaParalelo:" << TiempoSumaParalelo << "[ms]" << std::endl;
-	std::cout << std::endl;
-
-	std::cout << "====Desempeño====" << std::endl;
-	std::cout << "Tiempo Llenados= " << (double)TiempoSumaSerial / TiempoSumaParalelo << std::endl;
-	return (EXIT_SUCCESS);
+	std::cout << "TiempoSerial :"  << totalTimeS << "[ms]" << std::endl;
+	std::cout << "TiempoParalelo:"  << totalTimeP << "[ms]" << std::endl;
+	std::cout << "Desempeño entre S y P = " << (double)totalTimeS/totalTimeP <<std::endl;
+	return(EXIT_SUCCESS);
 }
+// auto start = std::chrono::high_resolution_clock::now();
+	
+// 	auto end     = std::chrono::high_resolution_clock::now(); 
+// 	auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+// 	auto totalTime01 = elapsed.count();
