@@ -25,11 +25,11 @@ void LLenadoArreglo(size_t Left, size_t Right, size_t RandType){
 	}
 }
 void SumadoParalelo(uint32_t Left, uint32_t Right){
-	Candado.lock();
+	//Candado.lock();
 	for(uint32_t i = Left; i < Right; i++){
 		SumaParalelo += ArregloParalelo[i];
 	}
-	Candado.unlock();
+	//Candado.unlock();
 	//std::cout << "Suma En Paralelo: "<< SumaParalelo << std::endl;
 }
 
@@ -72,10 +72,10 @@ int main(int argc, char** argv){
 
 	//======Llenado En Paralelo======
 	ArregloParalelo = new uint64_t[totalElementos];
-	start = std::chrono::high_resolution_clock::now();
 	for (size_t i= 0; i < numThreads ; i++){
 		threads.push_back(new std::thread(LLenadoArreglo, i*(totalElementos)/numThreads, (i+1)*(totalElementos)/numThreads,1));
 	}
+	start = std::chrono::high_resolution_clock::now();
 	for(auto &thLlenado : threads){
 		thLlenado->join();
 	}
@@ -87,27 +87,34 @@ int main(int argc, char** argv){
 
 	//======Sumado En Serie======
 	uint64_t SumaSerial=0;
+	start     = std::chrono::high_resolution_clock::now(); 
 	for (size_t i=0;i<totalElementos;i++){
 		SumaSerial += ArregloSerial[i];
 	}
+	end     = std::chrono::high_resolution_clock::now(); 
+	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	auto totalTimeSumaS = elapsed.count();
 	std::cout <<"Suma En Serie: " <<SumaSerial << std::endl;	
 	//======Sumado En Paralelo======
 	//SumaParalelo = new uint64_t[totalElementos];
 	for (size_t i=0;i<numThreads;i++){
 		threadsSumas.push_back(new std::thread(SumadoParalelo, i*(totalElementos)/numThreads,(i+1)*(totalElementos)/numThreads));
 	}
+	start     = std::chrono::high_resolution_clock::now();
 	for(auto &thS : threadsSumas){
 		thS->join();
 	}
-	std::cout << "Suma Total en Paralelo: " << SumaParalelo << std::endl;
-
+	end     = std::chrono::high_resolution_clock::now(); 
+	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	auto totalTimeSumaP = elapsed.count();
+	std::cout << "Suma Total en Paralelo: " << SumaParalelo << "\n" << std::endl;
+	std::cout << "==========Tiempos de Llenado==========" << std::endl;
 	std::cout << "TiempoSerial :"  << totalTimeS << "[ms]" << std::endl;
 	std::cout << "TiempoParalelo:"  << totalTimeP << "[ms]" << std::endl;
-	std::cout << "Desempeño entre S y P = " << (double)totalTimeS/totalTimeP <<std::endl;
+	std::cout << "Desempeño entre S y P = " << (double)totalTimeS/totalTimeP << "\n" <<std::endl;
+	std::cout << "==========Tiempos de Sumado==========" << std::endl;
+	std::cout << "TiempoSerial :"  << totalTimeSumaS << "[ms]" << std::endl;
+	std::cout << "TiempoParalelo:"  << totalTimeSumaP << "[ms]" << std::endl;
+	std::cout << "Desempeño entre S y P = " << (double)totalTimeSumaS/totalTimeSumaP <<std::endl;
 	return(EXIT_SUCCESS);
 }
-// auto start = std::chrono::high_resolution_clock::now();
-	
-// 	auto end     = std::chrono::high_resolution_clock::now(); 
-// 	auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-// 	auto totalTime01 = elapsed.count();
