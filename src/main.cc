@@ -25,11 +25,11 @@ void LLenadoArreglo(size_t Left, size_t Right, size_t RandType){
 	}
 }
 void SumadoParalelo(uint32_t Left, uint32_t Right){
-	//Candado.lock();
+	Candado.lock();
 	for(uint32_t i = Left; i < Right; i++){
 		SumaParalelo += ArregloParalelo[i];
 	}
-	//Candado.unlock();
+	Candado.unlock();
 	//std::cout << "Suma En Paralelo: "<< SumaParalelo << std::endl;
 }
 
@@ -118,3 +118,4 @@ int main(int argc, char** argv){
 	std::cout << "Desempeño entre S y P = " << (double)totalTimeSumaS/totalTimeSumaP <<std::endl;
 	return(EXIT_SUCCESS);
 }
+
