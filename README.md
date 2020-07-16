@@ -18,7 +18,7 @@ Este Taller presenta 2 modulos, un modulo de llenado de arreglo, y otro modulo d
 
 El orden y la estructura de la solucion propuesta se basa a grandes rasgos en el siguiente diseño.
 
-![Imgur](https://imgur.com/bj5IL0J)
+![Imgur](https://i.imgur.com/CJAfHzw.png)
 
 Al momento de ingresar los argumentos se debe especificar el tamaño de elementos que poseera el arreglo, luego se debe incluir la cantidad de hilos que se desean crear para la ejecucion del programa, y finalmente se incluiran los limites inferiores y superiores que funcionaran como rango de numeros aleatorios con los que se rellenaran los arreglos. Tras este proceso se realiza el proceso de creacion de los arreglos, el arreglo serial y uno paralelo para la comparacion de los resultados de desempeños. Una vez creado el arreglo de numeros aleatorios serial, se traspasarán los elementos hacia un arreglo que sera utilizado por los hilos de forma paralela, para luego entregar un solo arreglo que sera dividido nuevamente por otros hilos para lograr la suma de estos elementos. 
 
