@@ -24,9 +24,9 @@ void LLenadoArreglo(size_t Left, size_t Right, size_t RandType){
 		}
 	}
 }
-void SumadoParalelo(uint32_t Left, uint32_t Right){
+void SumadoParalelo(uint64_t Left, uint64_t Right){
 	Candado.lock();
-	for(uint32_t i = Left; i < Right; i++){
+	for(uint64_t i = Left; i < Right; i++){
 		SumaParalelo += ArregloParalelo[i];
 	}
 	Candado.unlock();
@@ -36,9 +36,9 @@ void SumadoParalelo(uint32_t Left, uint32_t Right){
 int main(int argc, char** argv){
 	
 	uint64_t totalElementos;
-	uint32_t numThreads;
-	uint32_t LInferior;
-	uint32_t LSuperior;
+	uint64_t numThreads;
+	uint64_t LInferior;
+	uint64_t LSuperior;
 	
 	auto argumentos = (std::shared_ptr<checkArgs>) new checkArgs(argc, argv);
 	
@@ -56,8 +56,8 @@ int main(int argc, char** argv){
 	std::srand(std::time(0)); 
 	std::random_device device;
 	std::mt19937 rng(device());
-	std::uniform_int_distribution<> unif(LInferior, LSuperior);
-	for(uint32_t i = 0; i < totalElementos; i++){
+	std::uniform_int_distribution<uint32_t> unif(LInferior, LSuperior);
+	for(uint64_t i = 0; i < totalElementos; i++){
 		ArregloComun[i] = unif(rng);
 		// std::cout << "Arreglo comun" << ArregloComun[i] << std::endl;
 	}
